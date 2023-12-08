@@ -1,10 +1,26 @@
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.util.Objects;
+
+import javax.imageio.ImageIO;
+
+import com.zimlewis.ByteToImage;
 
 public class Student {
     
-    String id , name , email , phoneNumber , address , image;
+    String id , name , email , phoneNumber , address;
     boolean isMale;
+    byte[] img;
     
+    public byte[] getImg() {
+        return img;
+    }
+
+    public void setImg(byte[] img) {
+        this.img = img;
+    }
+
     public void setId(String id) {
         this.id = id;
     }
@@ -25,9 +41,6 @@ public class Student {
         this.address = address;
     }
 
-    public void setImage(String image) {
-        this.image = image;
-    }
 
     public void setMale(boolean isMale) {
         this.isMale = isMale;
@@ -53,9 +66,6 @@ public class Student {
         return address;
     }
 
-    public String getImage() {
-        return image;
-    }
 
     public boolean isMale() {
         return isMale;
@@ -75,19 +85,59 @@ public class Student {
             return false;
         }
 
+
+
         Student otherStudent = (Student) obj;
+
+        BufferedImage image1 = convertToBufferedImage(ByteToImage.convertBytesToImage(img));
+        BufferedImage image2 = convertToBufferedImage(ByteToImage.convertBytesToImage(otherStudent.img));
+
         return Objects.equals(id, otherStudent.id) &&
                Objects.equals(name, otherStudent.name) &&
                Objects.equals(email, otherStudent.email) &&
                Objects.equals(phoneNumber, otherStudent.phoneNumber) &&
                Objects.equals(address, otherStudent.address) &&
-               Objects.equals(image, otherStudent.image) &&
+               areImagesEqual(image1, image2) &&
                isMale == otherStudent.isMale;
     }
 
     // Additional hashCode method is recommended when overriding equals
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, email, phoneNumber, address, image, isMale);
+        return Objects.hash(id, name, email, phoneNumber, address, isMale);
+    }
+
+    private static BufferedImage convertToBufferedImage(Image image) {
+        if (image instanceof BufferedImage) {
+            return (BufferedImage) image; // If the image is already a BufferedImage, no need to convert
+        }
+
+        // Create a BufferedImage with the same dimensions as the Image
+        BufferedImage bufferedImage = new BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+
+        // Draw the Image onto the BufferedImage
+        Graphics2D g2d = bufferedImage.createGraphics();
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+
+        return bufferedImage;
+    }
+
+    private static boolean areImagesEqual(BufferedImage img1, BufferedImage img2) {
+        // Check dimensions
+        if (img1.getWidth() != img2.getWidth() || img1.getHeight() != img2.getHeight()) {
+            return false;
+        }
+
+        // Check pixel values
+        for (int y = 0; y < img1.getHeight(); y++) {
+            for (int x = 0; x < img1.getWidth(); x++) {
+                if (img1.getRGB(x, y) != img2.getRGB(x, y)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

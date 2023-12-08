@@ -1,6 +1,7 @@
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.*;
@@ -10,7 +11,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 
-import com.zimlewis.Signal;
+import com.zimlewis.*;
 
 
 public class StudentManagement extends JPanel{
@@ -19,12 +20,28 @@ public class StudentManagement extends JPanel{
     JComboBox<String> genderComboBox;
     JTextArea addressArea;
     Signal onTableChangeSelection = new Signal(Integer.class, Integer.class);
+    JLabel imgLabel;
+    byte[] imageData;
+    
+
+    public void setImageData(byte[] imageData) {
+        this.imageData = imageData;
+
+        if (imageData == null){
+            imgLabel.setIcon(null);
+            return;
+        }
+
+        Image image = ByteToImage.convertBytesToImage(imageData);
+        ImageIcon ic = new ImageIcon(image.getScaledInstance(150, 200, Image.SCALE_SMOOTH));
+        imgLabel.setIcon(ic);
+    }
 
     Signal onNewButtonPressed = new Signal(ActionEvent.class);
     Signal onDeleteButtonPressed = new Signal(ActionEvent.class);
     Signal onSaveButtonPressed = new Signal(ActionEvent.class);
     Signal onUpdateButtonPressed = new Signal(ActionEvent.class);
-
+    Signal onImageButtonPressed = new Signal(ActionEvent.class);
 
     DefaultTableModel tableModel;
 
@@ -46,7 +63,6 @@ public class StudentManagement extends JPanel{
         tableModel.addColumn("phone");
         tableModel.addColumn("gender");
         tableModel.addColumn("address");
-        tableModel.addColumn("image");
 
 
 
@@ -110,8 +126,17 @@ public class StudentManagement extends JPanel{
 
         JPanel imagePanel = new JPanel();
         imagePanel.setBorder(new TitledBorder("Image"));
-        imagePanel.setBounds(340 , 20 , 100 , 100);
+        imagePanel.setBounds(320 , 0 , 170 , 230);
         inputPanel.add(imagePanel);
+
+        imgLabel = new JLabel();
+        imgLabel.setBounds(0 , 0 , 150 , 200);
+        imagePanel.add(imgLabel);
+
+        JButton imageButton = new JButton("Image");
+        imageButton.setBounds(340 , 230 , 150 , 50);
+        inputPanel.add(imageButton);
+        
 
         inputPanel.add(idLabel);
         inputPanel.add(idField);
@@ -147,7 +172,7 @@ public class StudentManagement extends JPanel{
         tableScrollPane.setPreferredSize(new Dimension(500, 510));
         
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT , inputPanel , tableScrollPane);
-        splitPane.setDividerLocation(250);
+        splitPane.setDividerLocation(300);
 
         
         add(splitPane, BorderLayout.SOUTH);
@@ -180,6 +205,13 @@ public class StudentManagement extends JPanel{
             public void actionPerformed(ActionEvent e){
                 onDeleteButtonPressed.emitSignal(e);
 
+            }
+        });
+
+        imageButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e){
+                onImageButtonPressed.emitSignal(e);
             }
         });
     }

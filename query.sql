@@ -4,7 +4,7 @@ go
 -- chon csdl
 use ts00500_dinh_pham_le_hoang_asm
 go
-insert into users(username , password , role) values
+insert into users(username , pass , rol) values
     ('zimlewis' , 'memaybeo123' , N'Giảng viên'),
     ('memay' , '456' , N'Cán bộ đào tạo'),
     ('conmemaybeo' , '9876' , N'Giảng viên');

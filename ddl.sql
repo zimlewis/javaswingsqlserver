@@ -5,8 +5,8 @@ use ts00500_dinh_pham_le_hoang_asm;
 go
 create table users (
     username varchar(50) not null,
-    password varchar(50) not null,
-    role nvarchar(50) not null,
+    pass varchar(50) not null,
+    rol nvarchar(50) not null,
     primary key (username)
 )
 go
@@ -16,8 +16,8 @@ create table students (
     email nvarchar(50) not null,
     phone_number varchar(10) not null,
     gender bit not null,
-    address nvarchar(100) not null,
-    image varchar(50) not null,
+    adr nvarchar(100) not null,
+    img varbinary(max) default null,
     primary key (student_id)
 )
 go

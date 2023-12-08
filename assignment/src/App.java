@@ -1,8 +1,13 @@
 import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.zimlewis.*;
 
@@ -83,8 +88,7 @@ public class App extends JFrame {
                     studentColumns.add("email");
                     studentColumns.add("phone_number");
                     studentColumns.add("gender");
-                    studentColumns.add("address");
-                    studentColumns.add("image");
+                    studentColumns.add("adr");
 
                     ArrayList<Student> oldList = new ArrayList<>();
                     for (Student student : studentsList){
@@ -94,15 +98,33 @@ public class App extends JFrame {
                     studentsList = new ArrayList<Student>();
 
                     for (Map<String , Object> student : studentUpdateList){
+                        byte[] imageData = null;
+                        String getImageQuery = "select img from students where student_id = ?";
+
+                        try (PreparedStatement statement = connection.prepareStatement(getImageQuery)){
+                            statement.setString(1, student.get("student_id").toString());
+                            try (ResultSet resultSet = statement.executeQuery()) {
+                                if (resultSet.next()) {
+                                    imageData = resultSet.getBytes("img");
+                                } else {
+                                    System.out.println("Image not found for ID: " + student.get("student_id").toString());
+                                }
+                            }
+                        }
+                        catch (Exception e){
+                            System.out.println(e);
+                        }
+
+
                         Student temp = new Student();
                         
                         temp.setId(student.get("student_id").toString());
                         temp.setName(student.get("student_name").toString());
                         temp.setEmail(student.get("email").toString());
                         temp.setPhoneNumber(student.get("phone_number").toString());
-                        temp.setAddress(student.get("address").toString());
-                        temp.setImage(student.get("image").toString());
+                        temp.setAddress(student.get("adr").toString());
                         temp.setMale((boolean) student.get("gender"));
+                        temp.setImg(imageData);
 
 
                         studentsList.add(temp);
@@ -117,8 +139,7 @@ public class App extends JFrame {
                                 student.getEmail(),
                                 student.getPhoneNumber(),
                                 student.isMale()?"Male":"Female",
-                                student.getAddress(),
-                                student.getImage()
+                                student.getAddress()
                             });
                         }
                     }
@@ -194,16 +215,27 @@ public class App extends JFrame {
         return true;
     }
 
+    public void deleteAllSelection(){
+        studentTab.idField.setText("");
+        studentTab.nameField.setText("");
+        studentTab.emailField.setText("");
+        studentTab.phoneField.setText("");
+        studentTab.genderComboBox.setSelectedIndex(0);;
+        studentTab.addressArea.setText("");
+        studentTab.setImageData(null);
+
+        studentTab.studentTable.setRowSelectionInterval(-1, -1);
+    }
 
     public void login(){
         try{
             ArrayList<String> columns = new ArrayList<String>();
             columns.add("username");
-            columns.add("password");
-            columns.add("role");
+            columns.add("pass");
+            columns.add("rol");
             String username = loginTab.usernameField.getText().trim();
             String password = loginTab.passwordField.getText().trim();
-            String query = "select * from users where username = '%s' and password = '%s'";
+            String query = "select * from users where username = '%s' and pass = '%s'";
             ArrayList<Map<String , Object>> results = Zql.excuteQueryToArrayList(connection , String.format(query, username , password) , columns);
 
 
@@ -261,18 +293,19 @@ public class App extends JFrame {
             studentTab.phoneField.setText(selectedStudent.getPhoneNumber());
             studentTab.genderComboBox.setSelectedIndex(selectedStudent.isMale()?0:1);;
             studentTab.addressArea.setText(selectedStudent.getAddress());
+            studentTab.setImageData(selectedStudent.getImg());
 
 
         });
 
-        studentTab.onNewButtonPressed.connectSignal((parameters) -> {
+        studentTab.onSaveButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
            
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
-            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Cán bộ đào tạo")){
+            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("rol").equals("Cán bộ đào tạo")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
                 return;
             }
@@ -306,30 +339,47 @@ public class App extends JFrame {
                 return;
             }
 
+            if (studentTab.imageData == null){
+                JOptionPane.showMessageDialog(null, "Student must have an image!");
+                return;
+            }
+
             String addQuery = String.format(
-                "insert into students(student_id , student_name , email , phone_number , gender , address , image) values ('%s' , N'%s' , '%s' , '%s' , %d , N'%s' , 'hoang.png')", 
+                "insert into students(student_id , student_name , email , phone_number , gender , adr) values ('%s' , N'%s' , '%s' , '%s' , %d , N'%s')", 
                 _id , _name , _email , _phone , _isMale , _address
             );
 
             Zql.excuteQueryToArrayList(connection, addQuery, new ArrayList<String>());
 
+            String updateQuery = "update students set img = ? where student_id = ?";
 
+            try (PreparedStatement statement = connection.prepareStatement(updateQuery)){
+                statement.setString(2 , _id);
+                statement.setBytes(1, studentTab.imageData);
+                statement.executeUpdate();
+            }
+            catch (Exception e){
+                System.out.println(e);
+            }
+
+            deleteAllSelection();
         });
 
-        studentTab.onSaveButtonPressed.connectSignal((parameters) -> {
+        studentTab.onNewButtonPressed.connectSignal((parameters) -> {
            ActionEvent action = (ActionEvent) parameters[0];
            
+           deleteAllSelection();
 
         });
 
         studentTab.onUpdateButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
            
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
-            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Cán bộ đào tạo")){
+            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("rol").equals("Cán bộ đào tạo")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
                 return;
             }
@@ -357,7 +407,7 @@ public class App extends JFrame {
             }
 
             if (!_address.equals("")){
-                updateQuery += " address = '" + _address + "',";
+                updateQuery += " adr = '" + _address + "',";
             }
             
             updateQuery += " gender = " + Integer.toString(_isMale);
@@ -367,16 +417,30 @@ public class App extends JFrame {
 
             Zql.excuteQueryToArrayList(connection, updateQuery, new ArrayList<String>());
 
+            if (studentTab.imageData != null){
+                String updateImageQuery = "update students set img = ? where student_id = ?";
+
+                try (PreparedStatement statement = connection.prepareStatement(updateImageQuery)){
+                    statement.setString(2 , selectedID);
+                    statement.setBytes(1, studentTab.imageData);
+                    statement.executeUpdate();
+                }
+                catch (Exception e){
+                    System.out.println(e);
+                }
+            }
+
+            deleteAllSelection();
         });
 
         studentTab.onDeleteButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
             
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
-            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Cán bộ đào tạo")){
+            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("rol").equals("Cán bộ đào tạo")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
                 return;
             }
@@ -388,6 +452,29 @@ public class App extends JFrame {
 
             Zql.excuteQueryToArrayList(connection, deleteGradeQuery, new ArrayList<>());
             Zql.excuteQueryToArrayList(connection, deleteStudentQuery, new ArrayList<>());
+
+            deleteAllSelection();
+        });
+
+        studentTab.onImageButtonPressed.connectSignal((p) -> {
+            ActionEvent action = (ActionEvent) p[0];
+
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(null);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+
+                try {
+                    Path imagePath = selectedFile.toPath();
+                    studentTab.setImageData(Files.readAllBytes(imagePath));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // Handle the exception
+                }
+            } else {
+                // User canceled the file selection
+                return;
+            }
         });
 
         // Grade
@@ -534,11 +621,11 @@ public class App extends JFrame {
         gradeTab.onNewButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
            
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
-            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Giảng viên")){
+            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("rol").equals("Giảng viên")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
                 return;
             }
@@ -602,9 +689,9 @@ public class App extends JFrame {
         gradeTab.onUpdateButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
            
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
             if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Giảng viên")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
@@ -662,11 +749,11 @@ public class App extends JFrame {
         gradeTab.onDeleteButtonPressed.connectSignal((parameters) -> {
             ActionEvent action = (ActionEvent) parameters[0];
            
-            String roleQueryCheck = String.format("select role from users where username = '%s'", user_id);
+            String roleQueryCheck = String.format("select rol from users where username = '%s'", user_id);
             ArrayList<String> roleColumn = new ArrayList<>();
-            roleColumn.add("role");
+            roleColumn.add("rol");
             
-            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("role").equals("Giảng viên")){
+            if (!Zql.excuteQueryToArrayList(connection, roleQueryCheck, roleColumn).get(0).get("rol").equals("Giảng viên")){
                 JOptionPane.showMessageDialog(null, "You don't have this permision!");
                 return;
             }
@@ -690,4 +777,3 @@ public class App extends JFrame {
 
     }
 }
-

@@ -14,7 +14,7 @@ public class Zql {
                 l = resultSetToArrayList(resultSet, columns);
             }
         }catch (Exception e){
-
+            System.err.println(e);
         }
 
         return l;
@@ -32,7 +32,7 @@ public class Zql {
             }
         }
         catch(Exception e){
-            
+            System.err.println(e);
         }
         return l;
     }
